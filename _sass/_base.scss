@@ -63,11 +63,11 @@ p {
 }
 
 .copyright {
-    color: #afafaf;
+    color: #000000;
     position: relative;
     font-size: 12px;
     letter-spacing: 0.7px;
-    background-color: #354550;
+    background-color: $theme-secondary;
     padding: 12px 0;
 }
 
