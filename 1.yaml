@@ -1,0 +1,216 @@
+# Ref. https://swagger.io/specification/
+openapi: 3.0.3
+info:
+  title: RETURNIT API Specification
+  version: '1.0'
+paths:
+  '/orders':
+    get:
+      summary: Getting Orders
+      tags:
+        - Order
+      parameters:
+        - name: acceptedAtFrom
+          description: '주문수락시간 기준으로 탐색할 start_time 입력 [start_time, end_time)'
+          in: query
+          schema:
+            type: string
+            format: 'yyyy-MM-ddTHH:mm:ssZ'
+            example: '2021-05-23T12:34:56Z'
+        - name: acceptedAtTo
+          description: '주문수락시간 기준으로 탐색할 end_time 입력 [start_time, end_time)'
+          in: query
+          schema:
+            type: string
+            format: 'yyyy-MM-ddTHH:mm:ssZ'
+            example: '2021-05-23T12:34:56Z'
+        - name: isCanceled
+          description: 'true 이면, canceledAtFrom, canceledAtTo 를 통한 취소 주문만 탐색. false 이면, acceptedAtFrom, acceptedAtTo 를 통한 주문수락시간 범위 내 모든 주문 탐색'
+          in: query
+          schema:
+            type: boolean
+            default: false
+          required: false
+        - name: canceledAtFrom
+          description: '주문취소시간 기준으로 탐색할 start_time 입력 [start_time, end_time)'
+          in: query
+          schema:
+            type: string
+            format: 'yyyy-MM-ddTHH:mm:ssZ'
+            example: '2021-05-23T12:34:56Z'
+        - name: canceledAtTo
+          description: '주문취소시간 기준으로 탐색할 end_time 입력 [start_time, end_time)'
+          in: query
+          schema:
+            type: string
+            format: 'yyyy-MM-ddTHH:mm:ssZ'
+            example: '2021-05-23T12:34:56Z'
+        - name: offset
+          description: '조회 기준 위치'
+          in: query
+          schema:
+            type: integer
+            default: 0
+          required: false
+        - name: limit
+          description: 'page 당 개수'
+          in: query
+          schema:
+            type: integer
+            default: 10
+          required: false
+      responses:
+        200:
+          description: |-
+            - isCanceled=false 이면, 'acceptedAtFrom' or 'acceptedAtTo' 로 주문수락시간 기준으로 탐색한 주문리스트
+            - isCanceled=true 이면, 'canceledAtFrom' or 'canceledAtTo' 로 주문취소시간 기준으로 탐색한 주문리스트
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        400:
+          description: |-
+            Bad Request
+            - 'acceptedAtFrom' or 'acceptedAtTo' 를 입력하지 않았을 경우
+            - 'isCanceled=true'일 때, 'canceledAtFrom' and 'canceledAtTo' 를 입력하지 않았을 경우
+            - 잘못된 Date format 을 입력할 경우
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                MissingConditionError:
+                  $ref: '#/components/examples/MissingConditionError'
+                WrongDateTimeFormatError:
+                  $ref: '#/components/examples/WrongDateTimeFormatError'
+                WrongDateTimeValueError:
+                  $ref: '#/components/examples/WrongDateTimeValueError'
+components:
+  schemas:
+    Response:
+      type: object
+      properties:
+        orders:
+          type: array
+          description: '조건에 맞게 탐색된 주문리스트'
+          items:
+            $ref: '#/components/schemas/Order'
+        totalSize:
+          type: integer
+          description: '조건에 맞게 탐색된 주문리스트의 주문의 총 개수'
+          example: 123
+    Order:
+      type: object
+      properties:
+        orderNumber:
+          type: string
+          description: 'Order Identifier | 주문 번호'
+          example: 'ASDF2205261451JJZB0'
+        acceptedAt:
+          type: string
+          description: 'Order Accept Time | 주문 수락 일시'
+          format: 'date-time'
+          example: '2022-06-14T12:34:56'
+        canceledAt:
+          type: string
+          nullable: true
+          description: 'Order Cancelation Time | 주문 취소 일시'
+          format: 'date-time'
+          example: '2022-06-14T12:34:56'
+        takeout:
+          type: boolean
+          description: 'Whether takeout or not | 포장 여부'
+        deliveredAt:
+          type: string
+          nullable: true
+          description: 'Order Delivery Time | 배달 완료 일시 | 예측시간 or 사장님 선택시간'
+          format: 'date-time'
+          example: '2022-06-14T12:34:56'
+        vendor:
+          $ref: '#/components/schemas/Vendor'
+        customer:
+          $ref: '#/components/schemas/Customer'
+        orderItems:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+    Vendor:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: 'Vendor Id | 가게 ID'
+        name:
+          type: string
+          description: 'Vendor Name | 가게 이름'
+          example: '한국관김치찌개&두루치기-선릉점'
+        businessNumber:
+          type: string
+          description: 'Vendor Business Number | 가게 사업자 번호'
+          example: '123-34-56789'
+    Customer:
+      type: object
+      properties:
+        phone:
+          type: string
+          description: 'Customer Phone | 고객 전화번호'
+          pattern: '^[0-9]+$'
+          example: '01068001234'
+        address:
+          type: string
+          nullable: true
+          description: '지번 주소 | 포장 주문일 때 null | 동정보 + 상세'
+          example: '서울특별시 서초구 서초동 (서초3동) 1498-5 마제스타시티, 힐스테이트 서리풀 15층'
+        roadAddress:
+          type: string
+          nullable: true
+          description: '도로명 주소 | 포장 주문일 때 null | 도로정보 + 상세'
+          example: '서울특별시 서초구 서초대로38길 12 마제스타시티, 힐스테이트 서리풀 15층'
+    OrderItem:
+      type: object
+      properties:
+        name:
+          type: string
+          description: 'Menu Name | 메뉴 이름'
+          example: '돼지갈비양념덮밥'
+        quantity:
+          type: integer
+          description: 'Quantity | 메뉴 수량'
+          minimum: 1
+        itemOptions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemOption'
+    ItemOption:
+      type: object
+      properties:
+        name:
+          type: string
+          description: 'Option Name | 옵션 이름'
+          example: '고기추가'
+        quantity:
+          type: integer
+          description: 'Quantity | 옵션 수량'
+          minimum: 1
+    Error:
+      type: object
+      properties:
+        errorCode:
+          type: number
+        errorMessage:
+          type: string
+  examples:
+    MissingConditionError:
+      value:
+        errorCode: 400101
+        errorMessage: 'MissionConditionError'
+    WrongDateTimeFormatError:
+      value:
+        errorCode: 400102
+        errorMessage: 'WrongDateFormatError'
+    WrongDateTimeValueError:
+      value:
+        errorCode: 400103
+        errorMessage: 'WrongDateTimeValueError'
+tags:
+  - name: Order
